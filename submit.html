@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Preference Survey</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+        }
+        .radio-option input {
+            margin-right: 5px;
+        }
+        .team-green {
+            color: green;
+        }
+        .team-red {
+            color: red;
+        }
+        input[type="number"] {
+            width: 100px;
+            padding: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #confirmation {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Energy Preference Survey</h1>
+    <form id="preferenceForm">
+        <div class="form-group">
+            <label>Select your team:</label>
+            <div class="radio-group">
+                <div class="radio-option team-green">
+                    <input type="radio" id="teamGreen" name="team" value="green" required>
+                    <label for="teamGreen">Green Team</label>
+                </div>
+                <div class="radio-option team-red">
+                    <input type="radio" id="teamRed" name="team" value="red" required>
+                    <label for="teamRed">Red Team</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="heatTemp">Preferred Heating Temperature in Winter (°F):</label>
+            <input type="number" id="heatTemp" name="heatTemp" min="60" max="90" required>
+        </div>
+
+        <div class="form-group">
+            <label for="acTemp">Preferred AC Temperature in Summer (°F):</label>
+            <input type="number" id="acTemp" name="acTemp" min="60" max="90" required>
+        </div>
+
+        <button type="submit">Submit Preferences</button>
+    </form>
+
+    <div id="confirmation">
+        <h3>Thank you for your submission!</h3>
+        <p>Your preferences have been recorded and cannot be changed.</p>
+    </div>
+
+    <script>
+        document.getElementById('preferenceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const team = document.querySelector('input[name="team"]:checked').value;
+            const heatTemp = document.getElementById('heatTemp').value;
+            const acTemp = document.getElementById('acTemp').value;
+            
+            // Store in localStorage (in a real app, you would send to a server)
+            const submissions = JSON.parse(localStorage.getItem('energySubmissions') || '[]');
+            submissions.push({ team, heatTemp, acTemp });
+            localStorage.setItem('energySubmissions', JSON.stringify(submissions));
+            
+            // Show confirmation and disable form
+            document.getElementById('confirmation').style.display = 'block';
+            document.getElementById('preferenceForm').reset();
+            document.getElementById('preferenceForm').querySelectorAll('input, button').forEach(el => {
+                el.disabled = true;
+            });
+        });
+    </script>
+</body>
+</html>
