@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Preferences Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .team-green { color: green; }
+        .team-red { color: red; }
+        .chart-container { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
+        .chart-box { width: calc(50% - 20px); min-width: 400px; border: 1px solid #ddd; padding: 15px; }
+        .stats-container { display: flex; gap: 30px; margin-bottom: 30px; flex-wrap: wrap; }
+        .stats-box { border: 1px solid #ddd; padding: 15px; min-width: 200px; }
+        button { padding: 10px 20px; background-color: #f44336; color: white; border: none; cursor: pointer; }
+        .energy-saver { padding: 15px; background-color: #e8f5e9; border-left: 5px solid #4CAF50; margin-bottom: 30px; }
+        .loading { text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Energy Preferences Results</h1>
+    
+    <div id="loading" class="loading">Loading data...</div>
+    
+    <div id="content" style="display: none;">
+        <button id="clearData">Clear All Data</button>
+        
+        <h2>All Submissions</h2>
+        <table id="submissionsTable">
+            <thead>
+                <tr>
+                    <th>Team</th>
+                    <th>Winter Temp</th>
+                    <th>Summer Temp</th>
+                    <th>Submitted</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
+        <div class="stats-container" id="statsContainer"></div>
+        
+        <div class="energy-saver" id="energySaver"></div>
+        
+        <h2>Temperature Distributions</h2>
+        <div class="chart-container">
+            <div class="chart-box">
+                <canvas id="winterGreenChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <canvas id="winterRedChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <canvas id="summerGreenChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <canvas id="summerRedChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Your Firebase configuration (must match index.html)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // DOM elements
+        const loadingDiv = document.getElementById('loading');
+        const contentDiv = document.getElementById('content');
+        const tableBody = document.querySelector('#submissionsTable tbody');
+        const clearBtn = document.getElementById('clearData');
+        const statsContainer = document.getElementById('statsContainer');
+        const energySaverDiv = document.getElementById('energySaver');
+        
+        // Initialize charts
+        const winterGreenChart = initializeChart('winterGreenChart', 'Winter Heating - Green Team', 'green');
+        const winterRedChart = initializeChart('winterRedChart', 'Winter Heating - Red Team', 'red');
+        const summerGreenChart = initializeChart('summerGreenChart', 'Summer AC - Green Team', 'green');
+        const summerRedChart = initializeChart('summerRedChart', 'Summer AC - Red Team', 'red');
+        
+        // Load data from Firebase
+        database.ref('submissions').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const submissions = data ? Object.values(data) : [];
+            
+            renderTable(submissions);
+            renderCharts(submissions);
+            renderStats(submissions);
+            determineEnergySaver(submissions);
+            
+            loadingDiv.style.display = 'none';
+            contentDiv.style.display = 'block';
+        });
+        
+        // Clear data button
+        clearBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                database.ref('submissions').remove()
+                    .then(() => alert('All data has been cleared'))
+                    .catch((error) => alert('Error clearing data: ' + error.message));
+            }
+        });
+        
+        // Helper functions
+        function initializeChart(canvasId, title, teamColor) {
+            return new Chart(
+                document.getElementById(canvasId),
+                {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({length: 31}, (_, i) => 60 + i),
+                        datasets: [{
+                            label: title,
+                            data: [],
+                            backgroundColor: teamColor === 'green' ? 'rgba(0, 128, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)',
+                            borderColor: teamColor === 'green' ? 'rgb(0, 128, 0)' : 'rgb(255, 0, 0)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of People'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Temperature (°F)'
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+        }
+        
+        function renderTable(submissions) {
+            tableBody.innerHTML = '';
+            submissions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            submissions.forEach(sub => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="team-${sub.team}">${sub.team === 'green' ? 'Green Team' : 'Red Team'}</td>
+                    <td>${sub.heatTemp}</td>
+                    <td>${sub.acTemp}</td>
+                    <td>${new Date(sub.timestamp).toLocaleString()}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function renderCharts(submissions) {
+            updateChart(winterGreenChart, submissions.filter(s => s.team === 'green').map(s => s.heatTemp));
+            updateChart(winterRedChart, submissions.filter(s => s.team === 'red').map(s => s.heatTemp));
+            updateChart(summerGreenChart, submissions.filter(s => s.team === 'green').map(s => s.acTemp));
+            updateChart(summerRedChart, submissions.filter(s => s.team === 'red').map(s => s.acTemp));
+        }
+        
+        function updateChart(chart, data) {
+            const bins = Array.from({length: 31}, () => 0);
+            data.forEach(temp => {
+                const index = temp - 60;
+                if (index >= 0 && index < bins.length) {
+                    bins[index]++;
+                }
+            });
+            chart.data.datasets[0].data = bins;
+            chart.update();
+        }
+        
+        function renderStats(submissions) {
+            statsContainer.innerHTML = '';
+            
+            if (submissions.length === 0) {
+                statsContainer.innerHTML = '<p>No data available</p>';
+                return;
+            }
+            
+            createStatsBox('Winter - Green Team', submissions.filter(s => s.team === 'green').map(s => s.heatTemp));
+            createStatsBox('Winter - Red Team', submissions.filter(s => s.team === 'red').map(s => s.heatTemp));
+            createStatsBox('Summer - Green Team', submissions.filter(s => s.team === 'green').map(s => s.acTemp));
+            createStatsBox('Summer - Red Team', submissions.filter(s => s.team === 'red').map(s => s.acTemp));
+        }
+        
+        function createStatsBox(title, data) {
+            if (data.length === 0) return;
+            
+            const mean = (data.reduce((a, b) => a + b, 0) / data.length).toFixed(1);
+            const sorted = [...data].sort((a, b) => a - b);
+            const median = sorted.length % 2 === 0 
+                ? (sorted[sorted.length/2 - 1] + sorted[sorted.length/2]) / 2 
+                : sorted[Math.floor(sorted.length/2)];
+            
+            const box = document.createElement('div');
+            box.className = 'stats-box';
+            box.innerHTML = `
+                <h3>${title}</h3>
+                <p>Mean: ${mean}°F</p>
+                <p>Median: ${median}°F</p>
+                <p>Submissions: ${data.length}</p>
+            `;
+            statsContainer.appendChild(box);
+        }
+        
+        function determineEnergySaver(submissions) {
+            if (submissions.length === 0) {
+                energySaverDiv.innerHTML = '<p>No data available to determine energy saver.</p>';
+                return;
+            }
+            
+            const greenWinter = submissions.filter(s => s.team === 'green').map(s => s.heatTemp);
+            const redWinter = submissions.filter(s => s.team === 'red').map(s => s.heatTemp);
+            const greenSummer = submissions.filter(s => s.team === 'green').map(s => s.acTemp);
+            const redSummer = submissions.filter(s => s.team === 'red').map(s => s.acTemp);
+            
+            if (greenWinter.length === 0 || redWinter.length === 0 || 
+                greenSummer.length === 0 || redSummer.length === 0) {
+                energySaverDiv.innerHTML = '<p>Insufficient data from both teams to determine energy saver.</p>';
+                return;
+            }
+            
+            const greenWinterMean = greenWinter.reduce((a, b) => a + b, 0) / greenWinter.length;
+            const redWinterMean = redWinter.reduce((a, b) => a + b, 0) / redWinter.length;
+            const greenSummerMean = greenSummer.reduce((a, b) => a + b, 0) / greenSummer.length;
+            const redSummerMean = redSummer.reduce((a, b) => a + b, 0) / redSummer.length;
+            
+            // Energy efficiency calculation:
+            // Lower winter temps and higher summer temps are more efficient
+            const greenScore = (75 - greenWinterMean) + (greenSummerMean - 75);
+            const redScore = (75 - redWinterMean) + (redSummerMean - 75);
+            
+            if (greenScore > redScore) {
+                energySaverDiv.innerHTML = `
+                    <h3>Energy Saver Determination</h3>
+                    <p>The <span class="team-green">Green Team</span> is more energy efficient!</p>
+                    <p>Analysis: Green Team prefers cooler winter temperatures (avg ${greenWinterMean.toFixed(1)}°F vs Red ${redWinterMean.toFixed(1)}°F) 
+                    and warmer summer temperatures (avg ${greenSummerMean.toFixed(1)}°F vs Red ${redSummerMean.toFixed(1)}°F).</p>
+                `;
+            } else if (redScore > greenScore) {
+                energySaverDiv.innerHTML = `
+                    <h3>Energy Saver Determination</h3>
+                    <p>The <span class="team-red">Red Team</span> is more energy efficient!</p>
+                    <p>Analysis: Red Team prefers cooler winter temperatures (avg ${redWinterMean.toFixed(1)}°F vs Green ${greenWinterMean.toFixed(1)}°F) 
+                    and warmer summer temperatures (avg ${redSummerMean.toFixed(1)}°F vs Green ${greenSummerMean.toFixed(1)}°F).</p>
+                `;
+            } else {
+                energySaverDiv.innerHTML = `
+                    <h3>Energy Saver Determination</h3>
+                    <p>Both teams are equally energy efficient based on current data.</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
