@@ -57,28 +57,20 @@
     </div>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     
     <script>
-        // Your Firebase configuration
-        // const firebaseConfig = {
-        //     apiKey: "YOUR_API_KEY",
-        //     authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        //    databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-        //    projectId: "YOUR_PROJECT_ID",
-        //    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        //    messagingSenderId: "YOUR_SENDER_ID",
-        //    appId: "YOUR_APP_ID"
-        //};
+        // Your Firebase configuration (must match index.html)
         const firebaseConfig = {
             apiKey: "AIzaSyAx-fvaubwvQPXw6J5GC3I_npnLzS58AaQ",
             authDomain: "testtemp-74a85.firebaseapp.com",
+            databaseURL: "https://testtemp-74a85.firebaseapp.com",
             projectId: "testtemp-74a85",
             storageBucket: "testtemp-74a85.firebasestorage.app",
             messagingSenderId: "270324747054",
             appId: "1:270324747054:web:2c5b243d4d8c7ffb3248bf"
-        };        
+        };  
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
